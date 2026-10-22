@@ -17,6 +17,7 @@ T.Popup {
     id: root
     property var style
     property var keyboardPanel
+    readonly property int localeCount: languageListModel.count
 
     signal showSettings()
 
@@ -31,12 +32,23 @@ T.Popup {
     }
 
     function show(parentItem, localeList, currentIndex) {
+        const currentLocale = localeList[currentIndex];
+        const activeLocales = VirtualKeyboardSettings.activeLocales;
+        let selectedIndex = 0;
         languageListModel.clear()
         for (var i in localeList) {
+            // External choosers receive inactive locales too. Do not offer a
+            // language that Qt's active-locale filter would refuse to select.
+            if (activeLocales.length > 0 && activeLocales.indexOf(localeList[i]) === -1) {
+                continue;
+            }
+            if (localeList[i] === currentLocale) {
+                selectedIndex = languageListModel.count;
+            }
             languageListModel.append({localeName: localeList[i], displayName: Qt.locale(localeList[i]).nativeLanguageName})
         }
-        languageListView.currentIndex = currentIndex
-        languageListView.positionViewAtIndex(currentIndex, ListView.Center)
+        languageListView.currentIndex = selectedIndex
+        languageListView.positionViewAtIndex(selectedIndex, ListView.Center)
 
         root.x = Qt.binding(() => keyboardPanel.mapFromItem(parentItem, 0, 0).x);
         root.y = Qt.binding(() => keyboardPanel.mapFromItem(parentItem, 0, -root.height).y);
@@ -66,6 +78,7 @@ T.Popup {
 
             ListView {
                 id: languageListView
+                objectName: "languageList"
                 clip: true
                 topMargin: languageListView.margins // so clip goes to the edge
                 bottomMargin: spacing
@@ -87,6 +100,7 @@ T.Popup {
 
                 delegate: LanguagePopupDelegate {
                     id: itemDelegate
+                    objectName: "locale-" + localeName
                     style: root.style
                     text: displayName
                     width: languageListView.rowWidth

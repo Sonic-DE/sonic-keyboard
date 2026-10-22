@@ -8,23 +8,18 @@
 
 #pragma once
 
-#include <QQuickItem>
-#include <QQuickWindow>
-#include <QVirtualKeyboardInputEngine>
+#include <QObject>
 #include <qqmlintegration.h>
 
 #include <xkbcommon/xkbcommon.h>
 
 #include "inputplugin.h"
+#include "overlay/overlaycontroller.h"
 
-class OverlayController;
-
-class InputListenerItem : public QQuickItem
-{
+class InputListenerItem : public QObject {
     Q_OBJECT
     QML_ELEMENT
 
-    Q_PROPERTY(QVirtualKeyboardInputEngine *engine WRITE setEngine)
     Q_PROPERTY(bool keyboardNavigationActive MEMBER m_keyboardNavigationActive)
 
     /**
@@ -37,14 +32,6 @@ class InputListenerItem : public QQuickItem
 public:
     InputListenerItem();
 
-    void setEngine(QVirtualKeyboardInputEngine *engine);
-
-    QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
-
-    void keyPressEvent(QKeyEvent *event) override;
-    void keyReleaseEvent(QKeyEvent *event) override;
-    void inputMethodEvent(QInputMethodEvent *event) override;
-
     /**
      * Get the overlay controller.
      */
@@ -55,6 +42,7 @@ Q_SIGNALS:
     void keyNavigationReleased(int key);
 
 private:
+    bool isNavigationKey(int key) const;
     InputPlugin m_input;
     OverlayController *m_overlayController = nullptr;
     bool m_keyboardNavigationActive = false;

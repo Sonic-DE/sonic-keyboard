@@ -6,14 +6,12 @@
 */
 
 #include "config-plasma-keyboard.h"
-#include "inputpanelintegration.h"
 #include "layoutpathhelper.h"
-#include "logging.h"
-#include "plasmakeyboardsettings.h"
 #include <plasma_keyboard_version.h>
 
 #include <KAboutData>
 #include <KConfigWatcher>
+#include <KCoreConfigSkeleton>
 #include <KCrash>
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
@@ -22,9 +20,10 @@
 #include <QDir>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QQuickWindow>
+#include <QQmlComponent>
 #include <QWindow>
-#include <qpa/qwindowsysteminterface.h>
+
+#include <memory>
 
 // signal handler for SIGINT & SIGTERM
 #ifdef Q_OS_UNIX
@@ -35,8 +34,8 @@
 
 int main(int argc, char **argv)
 {
-    qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
-
+    qputenv("QT_IM_MODULE", "sonicvirtualkeyboard");
+    qputenv("QT_QPA_PLATFORM", "xcb");
     initLayoutsPath();
 
     QGuiApplication application(argc, argv);
@@ -67,40 +66,47 @@ int main(int argc, char **argv)
         aboutData.processCommandLine(&parser);
     }
 
-    if (!PLASMA_KEYBOARD_SOUND_ENABLED) {
-        PlasmaKeyboardSettings::self()->setSoundEnabled(false);
+    QQmlApplicationEngine view;
+    KLocalization::setupLocalizedContext(&view);
+    QQmlComponent registration(&view);
+    registration.setData("import QtQml\nimport org.kde.plasma.keyboard\nQtObject {}", QUrl());
+    const std::unique_ptr<QObject> module(registration.create());
+    if (!module) {
+        qCritical() << registration.errors();
+        return 1;
     }
-
+    auto *settings = qobject_cast<KCoreConfigSkeleton *>(
+        view.singletonInstance<QObject *>(QStringLiteral("org.kde.plasma.keyboard"), QStringLiteral("PlasmaKeyboardSettings")));
+    if (!settings) {
+        qCritical("Cannot load keyboard settings");
+        return 1;
+    }
+    if (!PLASMA_KEYBOARD_SOUND_ENABLED) {
+        settings->setProperty("soundEnabled", false);
+    }
     if (!PLASMA_KEYBOARD_VIBRATION_ENABLED) {
-        PlasmaKeyboardSettings::self()->setVibrationEnabled(false);
+        settings->setProperty("vibrationEnabled", false);
     }
 
     // Listen to config updates from kcm, and reparse
-    auto watcher = KConfigWatcher::create(PlasmaKeyboardSettings::self()->sharedConfig());
+    auto watcher = KConfigWatcher::create(settings->sharedConfig());
     // clang-format off
     QObject::connect(watcher.get(),
         &KConfigWatcher::configChanged,
         &application,
-        [](const KConfigGroup &, const QByteArrayList &) {
-            PlasmaKeyboardSettings::self()->sharedConfig()->reparseConfiguration();
-            PlasmaKeyboardSettings::self()->load();
+        [settings](const KConfigGroup &, const QByteArrayList &) {
+            settings->sharedConfig()->reparseConfiguration();
+            settings->load();
         });
     // clang-format on
 
-    QQmlApplicationEngine view;
-    KLocalization::setupLocalizedContext(&view);
-
     QObject::connect(&view, &QQmlApplicationEngine::objectCreated, &application, [](QObject *object) {
         auto window = qobject_cast<QWindow *>(object);
-        const bool initSuccessful = initInputPanelIntegration(window, InputPanelRole::Keyboard);
-
-        if (!initSuccessful) {
-            qCCritical(PlasmaKeyboard)
-                << "Cannot run plasma-keyboard standalone. You can enable it in Plasma's System Settings app, on the “Virtual Keyboard” page.";
-            exit(1);
+        if (!window) {
+            QCoreApplication::exit(1);
+            return;
         }
 
-        window->requestActivate();
         window->setVisible(true);
     });
     view.load(QUrl(QStringLiteral("qrc:/qt/qml/org/kde/plasma/keyboard/main.qml")));
@@ -113,13 +119,13 @@ int main(int argc, char **argv)
     KSignalHandler::self()->watchSignal(SIGTERM);
     QObject::connect(KSignalHandler::self(), &KSignalHandler::signalReceived, &application, [](int signal) {
         if (signal == SIGINT || signal == SIGTERM) {
-            qCDebug(PlasmaKeyboard) << "Received signal" << signal << ", exiting now.";
+            qDebug() << "Received signal" << signal << ", exiting now.";
             QCoreApplication::quit();
         }
     });
 #endif
 
-    qCDebug(PlasmaKeyboard) << "Starting Plasma Keyboard application";
+    qDebug() << "Starting Plasma Keyboard application";
 
     return application.exec();
 }

@@ -12,7 +12,7 @@
 /**
  * @file
  *
- * QML-visible enum for describing how an input panel surface should be treated by the compositor.
+ * QML-visible roles for the keyboard and local X11 overlay windows.
  */
 
 /**
@@ -26,10 +26,10 @@ class InputPanelRole : public QObject
 
 public:
     /**
-     * Declares how the window should be exposed to the compositor.
+     * Declares how the local panel window should be positioned.
      *
-     * The role influences compositor behavior such as placement, focus interactions,
-     * and stacking relative to other surfaces.
+     * InputPanelIntegration uses the role for placement without taking focus
+     * away from the application's editor.
      */
     enum Role {
         /** Main on-screen keyboard window. */

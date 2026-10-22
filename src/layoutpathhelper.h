@@ -21,8 +21,12 @@
  */
 inline void initLayoutsPath()
 {
+    if (!qEnvironmentVariableIsEmpty("QT_VIRTUALKEYBOARD_LAYOUT_PATH")) {
+        return;
+    }
     // PLASMA_KEYBOARD_USE_QT_LAYOUTS - whether to use Qt's builtin keyboard layouts rather than our own.
-    const bool useQtLayouts = qEnvironmentVariableIntValue("PLASMA_KEYBOARD_USE_QT_LAYOUTS") != 0;
+    const QByteArray useQt = qgetenv("PLASMA_KEYBOARD_USE_QT_LAYOUTS").toLower();
+    const bool useQtLayouts = useQt == "1" || useQt == "true";
 
     if (!useQtLayouts) {
         // Set QT_VIRTUALKEYBOARD_LAYOUT_PATH to our own keyboard layouts provided in this repository.
