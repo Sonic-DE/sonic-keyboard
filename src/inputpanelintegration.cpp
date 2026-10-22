@@ -6,39 +6,29 @@
 
 #include "inputpanelintegration.h"
 
-#include "qwaylandinputpanelshellintegration_p.h"
-
 #include <QDebug>
+#include <QGuiApplication>
+#include <QInputMethod>
 #include <QWindow>
-#include <QtWaylandClient/private/qwaylandwindow_p.h>
 
 bool initInputPanelIntegration(QWindow *window, InputPanelRole::Role role)
 {
-    if (!window) {
+    if (!window || QGuiApplication::platformName() != QLatin1String("xcb")) {
         return false;
     }
 
-    window->setProperty("plasmaKeyboardInputPanelRole", static_cast<int>(role));
-
-    window->create();
-    auto waylandWindow = dynamic_cast<QtWaylandClient::QWaylandWindow *>(window->handle());
-    if (!waylandWindow) {
-        qWarning() << window << "is not a wayland window. Not creating input panel surface.";
-        return false;
+    // The same non-focus-stealing X11 flags used by Qt's DesktopInputPanel.
+    // Qt's input context retains the application's focused editor throughout.
+    window->setFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::WindowDoesNotAcceptFocus | Qt::BypassWindowManagerHint);
+    if (role == InputPanelRole::OverlayPanel) {
+        auto position = [window] {
+            auto *focus = QGuiApplication::focusWindow();
+            if (focus && focus != window) {
+                window->setPosition(focus->mapToGlobal(QGuiApplication::inputMethod()->cursorRectangle().bottomLeft().toPoint()));
+            }
+        };
+        QObject::connect(QGuiApplication::inputMethod(), &QInputMethod::cursorRectangleChanged, window, position);
+        position();
     }
-
-    static QWaylandInputPanelShellIntegration *shellIntegration = nullptr;
-    if (!shellIntegration) {
-        shellIntegration = new QWaylandInputPanelShellIntegration();
-        if (!shellIntegration->initialize(waylandWindow->display())) {
-            delete shellIntegration;
-            shellIntegration = nullptr;
-            qWarning() << "Failed to initialize input panel shell integration, possibly because compositor does not support the input_method_v1 protocol or"
-                          " because it needs more privileges.";
-            return false;
-        }
-    }
-
-    waylandWindow->setShellIntegration(shellIntegration);
     return true;
 }

@@ -13,7 +13,7 @@ class QWindow;
 /**
  * @file inputpanelintegration.h
  *
- * Helpers for integrating a QWindow with the compositor as a Wayland input panel
+ * Helpers for showing a non-focus-stealing X11 window for Qt Virtual Keyboard.
  * (e.g. the on-screen keyboard window or an overlay panel like the diacritics popup).
  */
 

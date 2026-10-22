@@ -9,20 +9,16 @@
 
 #include <QKeyEvent>
 #include <QObject>
-#include <memory>
 
-class InputMethod;
-class Keyboard;
-class InputMethodContext;
+class NativeInputMethod;
 
 /**
  * High level facade above the underlying classes
  */
-class InputPlugin : public QObject
-{
+class InputPlugin : public QObject {
     Q_OBJECT
 public:
-    explicit InputPlugin(InputMethod *inputMethod);
+    explicit InputPlugin(NativeInputMethod *inputMethod);
     ~InputPlugin();
 
     // move to InputPlugin and Camel case
@@ -84,10 +80,7 @@ public:
     uint32_t cursorPos() const;
     uint32_t anchorPos() const;
     QString surroundingText() const;
-    bool hasContext() const
-    {
-        return m_context.get();
-    }
+    bool hasContext() const;
 
 Q_SIGNALS:
     void contextChanged();
@@ -110,9 +103,10 @@ protected:
     // move to private when this facade wraps everything
 
 private:
-    void setGrabbingInternal();
-
+    NativeInputMethod *m_inputMethod;
     bool m_grabbing = false;
-    std::shared_ptr<Keyboard> m_keyboard;
-    std::shared_ptr<InputMethodContext> m_context = nullptr;
+    int m_deleteStart = 0;
+    int m_deleteLength = 0;
+    int m_preeditCursor = 0;
+    QString m_preedit;
 };

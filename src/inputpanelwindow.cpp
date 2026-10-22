@@ -11,13 +11,25 @@
 
 #include <KSandbox>
 #include <QDesktopServices>
+#include <QGuiApplication>
 #include <QProcess>
+#include <QScreen>
 #include <qnamespace.h>
 
 InputPanelWindow::InputPanelWindow(QWindow *parent)
     : QQuickWindow{parent}
 {
-    setFlag(Qt::FramelessWindowHint);
+    initInputPanelIntegration(this, InputPanelRole::Keyboard);
+    connect(qGuiApp, &QGuiApplication::focusWindowChanged, this, [this](QWindow *focus) {
+        if (focus && focus != this) {
+            setScreen(focus->screen());
+            setPosition(focus->screen()->geometry().topLeft());
+        }
+    });
+    if (auto *focus = QGuiApplication::focusWindow(); focus && focus->screen()) {
+        setScreen(focus->screen());
+        setPosition(focus->screen()->geometry().topLeft());
+    }
 }
 
 QRect InputPanelWindow::interactiveRegion() const

@@ -41,11 +41,10 @@ find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS
     Gui
     Qml
     VirtualKeyboard
-    WaylandClient
 )
 
 find_package(Qt6GuiPrivate ${QT_MIN_VERSION} REQUIRED NO_MODULE)
-find_package(Qt6WaylandClientPrivate ${QT_MIN_VERSION} REQUIRED NO_MODULE)
+find_package(Qt6VirtualKeyboardPrivate ${QT_MIN_VERSION} REQUIRED NO_MODULE)
 
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
     CoreAddons
@@ -66,12 +65,9 @@ ecm_setup_version(${PROJECT_VERSION} VARIABLE_PREFIX PLASMA_KEYBOARD VERSION_HEA
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(XKBCommon REQUIRED IMPORTED_TARGET xkbcommon)
 
-find_package(Wayland 1.2 REQUIRED COMPONENTS Client)
-find_package(QtWaylandScanner REQUIRED ${QT_MIN_VERSION})
-find_package(WaylandProtocols 1.19 REQUIRED)
-
 add_subdirectory(kcm)
 add_subdirectory(src)
+
 if(BUILD_TESTING)
     add_subdirectory(autotests)
 endif()

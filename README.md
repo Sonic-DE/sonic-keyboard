@@ -3,92 +3,38 @@
   - SPDX-License-Identifier: CC0-1.0
 -->
 
-# Plasma Keyboard
+# Sonic Keyboard
 
-The plasma-keyboard is a virtual keyboard based on [Qt Virtual Keyboard](https://doc.qt.io/qt-6/qtvirtualkeyboard-overview.html) designed to integrate in Plasma.
+Sonic Keyboard combines this project's existing keyboard UI, theme support, and layouts with [Qt Virtual Keyboard](https://doc.qt.io/qt-6/qtvirtualkeyboard-overview.html).
 
-It wraps Qt Virtual Keyboard in a window, and uses the input-method-v1 Wayland protocol to communicate with the compositor to function as an input method.
+The input engine is Qt's actual `QtVirtualKeyboard::PlatformInputContext`. The X11 frontend adapter supplies the original `src/qml/main.qml` desktop window. Composition, Unicode, focus, input hints, and text delivery remain handled by Qt. Wayland protocols and Qt Wayland development libraries are not required.
 
-## Install using the flatpak nightly repository
+## Application integration
 
-https://cdn.kde.org/flatpak/plasma-keyboard-nightly/org.kde.plasma.keyboard.flatpakref
+Select the replacement through the standard Qt input-method setting, before constructing the application:
 
-See also: https://userbase.kde.org/Tutorials/Flatpak#Nightly_KDE_apps
+```cpp
+qputenv("QT_IM_MODULE", "sonicvirtualkeyboard");
+QGuiApplication app(argc, argv);
+```
+
+Applications continue using the existing Qt API, including `QGuiApplication::inputMethod()->show()`, `hide()`, visibility notifications, and `QtQuick.VirtualKeyboard.InputPanel`. No Sonic-specific initialization calls or embedding headers are required. The plugin also accepts the `qtvirtualkeyboard` key when its plugin directory is preferred in Qt's plugin search path; the explicit `sonicvirtualkeyboard` key avoids ambiguity when the distribution's Qt plugin is also installed.
+
+Leave `QT_VIRTUALKEYBOARD_DESKTOP_DISABLE` unset for the original desktop keyboard window. Set it to `1` when the application supplies its own `InputPanel`, exactly as with Qt Virtual Keyboard. Explicit `QT_VIRTUALKEYBOARD_STYLE` and `QT_VIRTUALKEYBOARD_LAYOUT_PATH` settings are preserved; otherwise the Breeze frontend and installed bundled layouts are selected.
+
+Colors and fonts come from the application's applied Kirigami theme. Login-manager therefore uses the theme copied to the greeter account, while screenlocker uses the logged-in user's theme. The existing shared footer API is unchanged.
 
 ## Development
 
-Recommended methods for development are to either use
-[KDE Linux](https://linux.kde.org/) (as your OS or in a VM), or to build the
-Flatpak version of plasma-keyboard.
-
-### KDE Linux (recommended)
-
-Follow the
-[instructions](https://linux.kde.org/docs/kde-dev/#build-kde-software-thats-shipped-on-the-base-image)
-to set up a development environment for KDE software.
-
-Build plasma-keyboard once to clone the source locally:
-
-```bash
-kde-builder plasma-keyboard
-```
-
-After making changes to the code the workflow is: rebuild, refresh sysext, and restart plasma-keyboard. This
-script can be used to do that:
-
-```bash
-#!/usr/bin/env bash
-
-set -e
-
-# Rebuild plasma-keyboard and refresh the sysext
-kde-builder --no-src plasma-keyboard && systemctl --user daemon-reload && sudo systemd-sysext refresh --always-refresh=yes && systemctl restart --user plasma-plasmashell.service
-
-# Disable plasma-keyboard
-kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod ''
-
-# Enable plasma-keyboard with the newly built changes
-kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod '/usr/share/applications/org.kde.plasma.keyboard.desktop'
-```
-
-### Flatpak
-
-It is also possible to build plasma-keyboard as a Flatpak. This is the
-recommended method for development on distributions other than KDE Linux, as we
-don't want to install the development version of plasma-keyboard on a
-traditional Linux distribution (which may break the system).
-
-Clone the repository and make changes to the code, then build and install the
-development version of the Flatpak with your changes by running the following
-from the repository root (or save as a script and run it):
-
-```bash
-#!/usr/bin/env bash
-
-# Build and install the flatpak
-flatpak-builder --user --install --force-clean build-flatpak .flatpak-manifest.json
-
-# Disable plasma-keyboard if it is already running
-killall plasma-keyboard; kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod ''
-
-# Enable plasma-keyboard with the newly built changes
-kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod '$HOME/.local/share/flatpak/exports/share/applications/org.kde.plasma.keyboard.desktop'
-
-```
-
-### Building from source manually
+Build against matching Qt 6.11 or newer public/private development packages and the SonicDE providers:
 
 ```sh
-mkdir build && cd build
-cmake ..
-make && make install
+cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
+cmake --build build --parallel 8
+ctest --test-dir build --output-on-failure
 ```
 
-### Troubleshooting
-
-Join the [KDE Matrix chat](https://community.kde.org/Matrix) so we can help you
-get started with development! We have a room specifically for input handling:
-[#kde-input:kde.org](https://matrix.to/#/#kde-input:kde.org)
+For build-tree testing, add `build/plugins` to `QT_PLUGIN_PATH` and `build/bin` to `QML_IMPORT_PATH`, alongside the paths for the staged SonicDE dependencies. X11 integration tests use a private Xvfb display and require `xvfb-run` and `dbus-run-session`. The adapter uses a Qt private frontend hook, so rebuild it when updating Qt's private development ABI.
 
 ## Layouts
 
@@ -96,9 +42,8 @@ The keyboard layouts are located in the [src/layouts](/src/layouts) folder.
 
 They are forked from Qt's [layouts](https://github.com/qt/qtvirtualkeyboard/tree/dev/src/layouts), with modifications that we want for Plasma. Please view the official [Qt documentation](https://doc.qt.io/qt-6/qtvirtualkeyboard-overview.html#adding-new-keyboard-layouts) for a guide on how to create and modify keyboard layouts.
 
-To use Qt's built-in keyboard layouts rather than the ones we supply in `plasma-keyboard`, set `PLASMA_KEYBOARD_USE_QT_LAYOUTS=1` when starting KWin (or the login session).
+To use Qt's built-in keyboard layouts rather than the bundled ones, set `PLASMA_KEYBOARD_USE_QT_LAYOUTS=1` when starting the Qt application.
 
 ## Troubleshooting
 
-KWin by default only shows the keyboard when a text field is interacted with by touch. Set `KWIN_IM_SHOW_ALWAYS=1` when starting KWin (or the login session) in order to force the keyboard to always pop up.
-
+If the input context is unavailable, check that the matching Qt Virtual Keyboard runtime and the replacement plugin are in Qt's plugin search path. The login/lock-screen footer controls activation through Qt's usual input-method API.

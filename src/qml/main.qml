@@ -19,6 +19,14 @@ InputPanelWindow {
     height: Screen.height
     width: Screen.width
     color: 'transparent'
+    visible: Qt.inputMethod.visible
+
+    // Keep Qt's explicit style overrides usable, even if they do not expose
+    // the additional theme/geometry properties supplied by our Breeze style.
+    property QtObject fallbackPopupStyle: QtObject {
+        property var theme: PlasmaKeyboard.BreezeConstants
+        property real scaleHint: inputPanel.keyboard.style ? inputPanel.keyboard.style.scaleHint : 1
+    }
 
     onVisibleChanged: {
         if (!visible) {
@@ -35,9 +43,6 @@ InputPanelWindow {
 
     InputListenerItem {
         id: thing
-        focus: true
-        engine: inputPanel.InputContext.inputEngine
-
         keyboardNavigationActive: inputPanel.keyboard.navigationModeActive
 
         onKeyNavigationPressed: (key) => {
@@ -58,14 +63,19 @@ InputPanelWindow {
         onCandidateSelected: (index) => thing.overlayController.commitCandidate(index)
     }
 
-    interactiveRegion: Qt.rect(panelWrapper.x, panelWrapper.y, panelWrapper.width, panelWrapper.height)
+    // The modal chooser can extend above the keys. Restore click-through when
+    // it closes instead of leaving an invisible full-screen input window.
+    interactiveRegion: languageDialog.visible ? Qt.rect(0, 0, root.width, root.height)
+        : Qt.rect(panelWrapper.x, panelWrapper.y, panelWrapper.width, panelWrapper.height)
 
     Kirigami.ShadowedRectangle {
         id: panelWrapper
 
         LanguagePopup {
             id: languageDialog
-            style: inputPanel.keyboard.style
+            objectName: "sonicLanguagePopup"
+            style: inputPanel.keyboard.style && inputPanel.keyboard.style.theme !== undefined
+                ? inputPanel.keyboard.style : root.fallbackPopupStyle
             keyboardPanel: inputPanel
 
             onShowSettings: root.showSettings()
@@ -102,6 +112,7 @@ InputPanelWindow {
 
         InputPanel {
             id: inputPanel
+            objectName: "sonicInputPanel"
             anchors {
                 top: parent.top
                 topMargin: parent.padding
@@ -110,32 +121,34 @@ InputPanelWindow {
             }
 
             // height is calculated by InputPanel
-            width: inputPanel.keyboard.style ? inputPanel.keyboard.style.aspectRatio * inputPanel.keyboard.style.targetKeyboardHeight : 0
+            width: {
+                const style = inputPanel.keyboard.style;
+                if (!style) {
+                    return 0;
+                }
+                if (style.aspectRatio !== undefined && style.targetKeyboardHeight !== undefined) {
+                    return style.aspectRatio * style.targetKeyboardHeight;
+                }
+                return Math.max(100, root.width - panelWrapper.padding * 2);
+            }
 
             focusPolicy: Qt.NoFocus
-            externalLanguageSwitchEnabled: true
+            externalLanguageSwitchEnabled: !!(keyboard.style && keyboard.style.theme !== undefined)
             onExternalLanguageSwitch: (localeList, currentIndex) => {
                 languageDialog.show(inputPanel.keyboard.activeKey, localeList, currentIndex)
             }
 
             function updateLocales() {
-                if (PlasmaKeyboardSettings.enabledLocales.length === 0) {
-                    // If there are no enabled locales, set it to the current locale
-                    // NOTE: If Qt.locale().name is not valid, then all keyboard layouts will be shown.
-                    let locale = Qt.locale().name;
-                    if (locale === "C") {
-                        locale = "en_US";
-                    }
-                    VirtualKeyboardSettings.activeLocales = [locale];
-                } else {
-                    VirtualKeyboardSettings.activeLocales = PlasmaKeyboardSettings.enabledLocales;
-                }
+                // Qt interprets an empty list as all available languages.
+                VirtualKeyboardSettings.activeLocales = PlasmaKeyboardSettings.enabledLocales;
             }
 
             Connections {
                 target: VirtualKeyboardSettings
                 function onAvailableLocalesChanged() {
-                    inputPanel.updateLocales();
+                    if (PlasmaKeyboardSettings.enabledLocales.length > 0) {
+                        inputPanel.updateLocales();
+                    }
                 }
             }
 
@@ -147,8 +160,10 @@ InputPanelWindow {
             }
 
             Component.onCompleted: {
-                VirtualKeyboardSettings.styleName = "Breeze";
-                inputPanel.updateLocales();
+                // Preserve caller selections when no project preference exists.
+                if (PlasmaKeyboardSettings.enabledLocales.length > 0) {
+                    inputPanel.updateLocales();
+                }
             }
         }
     }
