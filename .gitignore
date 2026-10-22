@@ -26,6 +26,8 @@ compile_commands.json
 .idea
 /cmake-build*
 .cache
+.ccls-cache
+graphify-out
 Testing/
 /.vscode/
 .qtcreator/
