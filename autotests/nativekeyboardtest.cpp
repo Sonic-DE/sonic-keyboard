@@ -310,7 +310,7 @@ private Q_SLOTS:
         m_password->removeEventFilter(&counter);
     }
 
-    void appliedPalette_data()
+    void explicitPaletteBindings_data()
     {
         QTest::addColumn<QColor>("foreground");
         QTest::addColumn<QColor>("background");
@@ -318,7 +318,7 @@ private Q_SLOTS:
         QTest::newRow("light") << QColor(QStringLiteral("#183d56")) << QColor(QStringLiteral("#f5f5f5"));
     }
 
-    void appliedPalette()
+    void explicitPaletteBindings()
     {
         QFETCH(QColor, foreground);
         QFETCH(QColor, background);
