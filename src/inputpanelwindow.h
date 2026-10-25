@@ -13,21 +13,25 @@
 #include <QQuickWindow>
 #include <qqmlintegration.h>
 
-class InputPanelWindow : public QQuickWindow
-{
+class InputPanelWindow : public QQuickWindow {
     Q_OBJECT
     QML_ELEMENT
 
     Q_PROPERTY(QRect interactiveRegion READ interactiveRegion WRITE setInteractiveRegion NOTIFY interactiveRegionChanged)
+    Q_PROPERTY(bool settingsAvailable READ settingsAvailable WRITE setSettingsAvailable NOTIFY settingsAvailableChanged)
 
 public:
     explicit InputPanelWindow(QWindow *parent = nullptr);
+    explicit InputPanelWindow(bool settingsAvailable, QWindow *parent = nullptr);
 
     // The interactive part of the keyboard that is reserved on the screen for the input panel.
     // The space outside of it will be overlaid will have input passed to underlying windows by the compositor.
     // This is required for some visual items (ex. popovers) to show outside of the input panel.
     QRect interactiveRegion() const;
     void setInteractiveRegion(QRect interactiveRegion);
+
+    bool settingsAvailable() const;
+    void setSettingsAvailable(bool available);
 
     Q_INVOKABLE void showSettings();
 
@@ -41,7 +45,9 @@ public:
 
 Q_SIGNALS:
     void interactiveRegionChanged();
+    void settingsAvailableChanged();
 
 private:
     QRect m_interactiveRegion;
+    bool m_settingsAvailable = true;
 };
