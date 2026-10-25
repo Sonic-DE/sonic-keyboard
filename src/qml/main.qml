@@ -74,6 +74,7 @@ InputPanelWindow {
         LanguagePopup {
             id: languageDialog
             objectName: "sonicLanguagePopup"
+            settingsAvailable: root.settingsAvailable
             style: inputPanel.keyboard.style && inputPanel.keyboard.style.theme !== undefined
                 ? inputPanel.keyboard.style : root.fallbackPopupStyle
             keyboardPanel: inputPanel

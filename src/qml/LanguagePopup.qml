@@ -17,12 +17,14 @@ T.Popup {
     id: root
     property var style
     property var keyboardPanel
+    property bool settingsAvailable: true
     readonly property int localeCount: languageListModel.count
 
     signal showSettings()
 
     width: languageListView.rowWidth + languageListView.margins * 2
-    height: Math.min(languageListView.contentHeight + languageListView.spacing + settingsDelegate.implicitHeight + settingsDelegate.Layout.topMargin, languageListView.rowHeight * 6)
+    height: Math.min(languageListView.contentHeight
+            + (settingsAvailable ? languageListView.spacing + settingsDelegate.implicitHeight + settingsDelegate.Layout.topMargin : 0), languageListView.rowHeight * 6)
             + languageListView.margins * 2
     modal: true
     visible: false
@@ -115,9 +117,16 @@ T.Popup {
                 }
             }
 
-            Kirigami.Separator { Layout.fillWidth: true }
+            Kirigami.Separator {
+                objectName: "keyboardSettingsSeparator"
+                visible: root.settingsAvailable
+                Layout.fillWidth: true
+            }
             LanguagePopupDelegate {
                 id: settingsDelegate
+                objectName: "keyboardSettingsAction"
+                visible: root.settingsAvailable
+                enabled: root.settingsAvailable
                 Layout.topMargin: root.style.scaleHint * 4
                 Layout.fillWidth: true
 

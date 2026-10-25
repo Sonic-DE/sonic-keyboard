@@ -25,6 +25,12 @@ if(XVFB_RUN_EXECUTABLE AND DBUS_RUN_SESSION_EXECUTABLE)
         QT_QPA_PLATFORM=xcb SONIC_KEYBOARD_TEST_ISOLATED=1 SONIC_KEYBOARD_TEST_DESKTOP=1
         SONIC_KEYBOARD_TEST_MODULE=sonicvirtualkeyboard $<TARGET_FILE:nativekeyboardtest>)
     set_tests_properties(desktopkeyboardapi PROPERTIES TIMEOUT 90)
+    add_test(NAME greeterkeyboardpolicy COMMAND ${XVFB_RUN_EXECUTABLE} -a -s "-screen 0 1280x900x24"
+        ${DBUS_RUN_SESSION_EXECUTABLE} -- ${CMAKE_COMMAND} -E env
+        QT_QPA_PLATFORM=xcb SONIC_KEYBOARD_TEST_ISOLATED=1 SONIC_KEYBOARD_TEST_DESKTOP=1
+        SONIC_KEYBOARD_TEST_MODULE=sonicvirtualkeyboard
+        $<TARGET_FILE:nativekeyboardtest> languageSwitcherSettingsDisabled)
+    set_tests_properties(greeterkeyboardpolicy PROPERTIES TIMEOUT 90)
     add_test(NAME qtkeyboardstyleoverride COMMAND ${XVFB_RUN_EXECUTABLE} -a -s "-screen 0 1280x900x24"
         ${DBUS_RUN_SESSION_EXECUTABLE} -- ${CMAKE_COMMAND} -E env
         QT_QPA_PLATFORM=xcb SONIC_KEYBOARD_TEST_ISOLATED=1 SONIC_KEYBOARD_TEST_DESKTOP=1
