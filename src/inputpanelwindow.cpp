@@ -17,7 +17,13 @@
 #include <qnamespace.h>
 
 InputPanelWindow::InputPanelWindow(QWindow *parent)
+    : InputPanelWindow(true, parent)
+{
+}
+
+InputPanelWindow::InputPanelWindow(bool settingsAvailable, QWindow *parent)
     : QQuickWindow{parent}
+    , m_settingsAvailable(settingsAvailable)
 {
     initInputPanelIntegration(this, InputPanelRole::Keyboard);
     connect(qGuiApp, &QGuiApplication::focusWindowChanged, this, [this](QWindow *focus) {
@@ -49,8 +55,25 @@ void InputPanelWindow::setInteractiveRegion(QRect interactiveRegion)
     setMask(QRegion(m_interactiveRegion));
 }
 
+bool InputPanelWindow::settingsAvailable() const
+{
+    return m_settingsAvailable;
+}
+
+void InputPanelWindow::setSettingsAvailable(bool available)
+{
+    if (m_settingsAvailable == available) {
+        return;
+    }
+    m_settingsAvailable = available;
+    Q_EMIT settingsAvailableChanged();
+}
+
 void InputPanelWindow::showSettings()
 {
+    if (!settingsAvailable()) {
+        return;
+    }
     if (KSandbox::isInside()) {
         QProcess::startDetached(QStringLiteral("kcmshell6"), {QStringLiteral("kcm_plasmakeyboard")});
     } else {

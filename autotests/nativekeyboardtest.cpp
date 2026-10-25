@@ -16,6 +16,8 @@
 #include <QQmlProperty>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <QScopeGuard>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QVirtualKeyboardInputContext>
@@ -193,9 +195,38 @@ private Q_SLOTS:
 
     void languageSwitcherOpensAndSelectsLayout()
     {
+        exerciseLanguageSwitcher(true);
+    }
+
+    void languageSwitcherSettingsDisabled()
+    {
         if (m_keyboardWindow == m_window) {
             QSKIP("The custom language popup belongs to the desktop frontend");
         }
+        QSignalSpy changed(m_keyboardWindow, SIGNAL(settingsAvailableChanged()));
+        QVERIFY(changed.isValid());
+        QVERIFY(m_keyboardWindow->property("settingsAvailable").toBool());
+        const auto restore = qScopeGuard([this] {
+            m_keyboardWindow->setProperty("settingsAvailable", true);
+        });
+        QVERIFY(m_keyboardWindow->setProperty("settingsAvailable", false));
+        QCOMPARE(changed.count(), 1);
+        QVERIFY(m_keyboardWindow->setProperty("settingsAvailable", false));
+        QCOMPARE(changed.count(), 1);
+        exerciseLanguageSwitcher(false);
+    }
+
+private:
+    void exerciseLanguageSwitcher(bool settingsExpected)
+    {
+        if (m_keyboardWindow == m_window) {
+            QSKIP("The custom language popup belongs to the desktop frontend");
+        }
+        QQmlExpression reset(QQmlEngine::contextForObject(m_panel),
+                             m_panel,
+                             QStringLiteral("VirtualKeyboardSettings.activeLocales = []; VirtualKeyboardSettings.locale = 'en_US'"));
+        reset.evaluate();
+        QVERIFY2(!reset.hasError(), qPrintable(reset.error().toString()));
         std::function<QQuickItem *(QQuickItem *, const QString &)> findItem = [&](QQuickItem *item, const QString &name) -> QQuickItem * {
             if (item->objectName() == name && item->isVisible()) {
                 return item;
@@ -223,6 +254,14 @@ private Q_SLOTS:
         // panel. It must remain visible and accept an outside-click dismissal.
         clickItem(key);
         QTRY_VERIFY(popup->property("visible").toBool());
+        QCOMPARE(m_keyboardWindow->property("settingsAvailable").toBool(), settingsExpected);
+        auto *settingsAction = popup->findChild<QObject *>(QStringLiteral("keyboardSettingsAction"));
+        auto *settingsSeparator = popup->findChild<QObject *>(QStringLiteral("keyboardSettingsSeparator"));
+        QVERIFY(settingsAction);
+        QVERIFY(settingsSeparator);
+        QTRY_COMPARE(settingsAction->property("visible").toBool(), settingsExpected);
+        QCOMPARE(settingsAction->property("enabled").toBool(), settingsExpected);
+        QCOMPARE(settingsSeparator->property("visible").toBool(), settingsExpected);
         QVERIFY(popup->property("localeCount").toInt() > 2);
         auto *content = popup->property("contentItem").value<QQuickItem *>();
         QVERIFY(content);
@@ -286,6 +325,7 @@ private Q_SLOTS:
         QTRY_COMPARE(m_keyboardWindow->mask(), closedMask);
     }
 
+private Q_SLOTS:
     void passwordHintsAndOverlayPrivacy()
     {
         QVERIFY(QMetaObject::invokeMethod(m_window, "focusPassword"));
