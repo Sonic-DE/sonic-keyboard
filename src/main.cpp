@@ -35,7 +35,7 @@
 int main(int argc, char **argv)
 {
     qputenv("QT_IM_MODULE", "sonicvirtualkeyboard");
-    qputenv("QT_QPA_PLATFORM", "xcb");
+    qputenv("QT_QPA_PLATFORM", "xlibre;xcb");
     initLayoutsPath();
 
     QGuiApplication application(argc, argv);
