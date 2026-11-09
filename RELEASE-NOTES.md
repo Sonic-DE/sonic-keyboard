@@ -2,10 +2,9 @@
 
 SonicDE's on-screen keyboard for typing with touch screens or without a physical keyboard.
 
-## Unreleased
+## 6.8.2 (2026-11-10)
 
-- The settings button in the language switcher can now be turned off, for setups where changing settings shouldn't be offered.
-- Behind the scenes: clearer test names, and the on-screen keyboard uses QXLibre for X11 when it's installed, going back to Qt's own X11 support when it isn't.
+- Behind the scenes: the on-screen keyboard uses QXLibre for X11 when it's installed, going back to Qt's own X11 support when it isn't.
 
 ## 6.8.1.1 (2026-10-25)
 
